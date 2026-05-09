@@ -1,5 +1,5 @@
+from datetime import datetime
 from sqlalchemy import Column, Integer, String, Float, Text, DateTime, JSON
-from sqlalchemy.sql import func
 from database import Base
 
 
@@ -13,4 +13,4 @@ class GameData(Base):
     width = Column(Float)
     video_data = Column(Text)
     payload = Column(JSON)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime, default=datetime.utcnow)
