@@ -98,7 +98,7 @@ HTML_PAGE = """<!DOCTYPE html>
 <div id="streamWrap">
   <iframe
     id="streamIframe"
-    src="https://share.streampixel.io/YOUR_PROJECT_ID"
+    src="https://share.streampixel.io/69fed8dba099e03c0053eca1"
     allow="autoplay; fullscreen; microphone; camera"
     allowfullscreen
   ></iframe>
