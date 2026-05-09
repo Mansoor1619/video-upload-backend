@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Upload</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+  .container { background: #16213e; padding: 40px; border-radius: 16px; width: 500px; box-shadow: 0 8px 32px rgba(0,0,0,.4); }
+  h1 { font-size: 24px; margin-bottom: 8px; color: #e94560; }
+  p.sub { color: #888; margin-bottom: 24px; font-size: 14px; }
+  .drop-zone { border: 2px dashed #444; border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: .3s; margin-bottom: 16px; }
+  .drop-zone:hover, .drop-zone.dragover { border-color: #e94560; background: rgba(233,69,96,.08); }
+  .drop-zone.has-file { border-color: #0f3460; }
+  .drop-zone input { display: none; }
+  .drop-zone .icon { font-size: 48px; margin-bottom: 12px; }
+  .drop-zone .text { color: #aaa; }
+  .drop-zone .filename { color: #e94560; font-weight: 600; margin-top: 8px; display: none; }
+  .drop-zone.has-file .filename { display: block; }
+  .drop-zone.has-file .text { display: none; }
+  .url-input { width: 100%; padding: 12px 16px; background: #0f3460; border: 1px solid #333; border-radius: 8px; color: #eee; font-size: 14px; margin-bottom: 12px; }
+  .url-input::placeholder { color: #666; }
+  .btn { width: 100%; padding: 14px; background: #e94560; border: none; border-radius: 8px; color: #fff; font-size: 16px; font-weight: 600; cursor: pointer; transition: .3s; }
+  .btn:hover { background: #d63851; }
+  .btn:disabled { background: #444; cursor: not-allowed; }
+  .progress-wrap { margin-top: 16px; display: none; }
+  .progress-wrap.active { display: block; }
+  .progress-bar { height: 8px; background: #0f3460; border-radius: 4px; overflow: hidden; }
+  .progress-bar .fill { height: 100%; width: 0%; background: #e94560; transition: width .3s; border-radius: 4px; }
+  .status { margin-top: 8px; font-size: 13px; color: #aaa; text-align: center; }
+  .status.success { color: #4caf50; }
+  .status.error { color: #e94560; }
+  .info { margin-top: 16px; padding: 12px; background: #0f3460; border-radius: 8px; font-size: 12px; color: #888; display: none; }
+  .info.active { display: block; }
+  .info pre { white-space: pre-wrap; word-break: break-all; margin-top: 4px; color: #aaa; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Upload Video</h1>
+  <p class="sub">Select a video file and upload to server</p>
+
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept=".mp4,.mov,.avi,.mkv,.webm">
+    <div class="icon">&#128249;</div>
+    <div class="text">Click or drag a video file here</div>
+    <div class="filename" id="fileName"></div>
+  </div>
+
+  <input class="url-input" id="urlInput" type="text" placeholder="Upload URL" value="/upload-video-form">
+
+  <button class="btn" id="uploadBtn" disabled>Upload Video</button>
+
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-bar"><div class="fill" id="progressFill"></div></div>
+    <div class="status" id="statusText">Ready</div>
+  </div>
+
+  <div class="info" id="info">
+    <strong>Response:</strong>
+    <pre id="responseText"></pre>
+  </div>
+</div>
+
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const fileName = document.getElementById('fileName');
+const urlInput = document.getElementById('urlInput');
+const uploadBtn = document.getElementById('uploadBtn');
+const progressWrap = document.getElementById('progressWrap');
+const progressFill = document.getElementById('progressFill');
+const statusText = document.getElementById('statusText');
+const info = document.getElementById('info');
+const responseText = document.getElementById('responseText');
+
+let selectedFile = null;
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+
+fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+
+function handleFile(file) {
+  if (!file.type.startsWith('video/')) { alert('Please select a video file'); return; }
+  selectedFile = file;
+  fileName.textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + ' MB)';
+  dropZone.classList.add('has-file');
+  uploadBtn.disabled = false;
+}
+
+uploadBtn.addEventListener('click', uploadFile);
+
+async function uploadFile() {
+  if (!selectedFile) return;
+  const url = urlInput.value.trim();
+  if (!url) { alert('Enter an upload URL'); return; }
+
+  uploadBtn.disabled = true;
+  progressWrap.classList.add('active');
+  statusText.textContent = 'Uploading...';
+  statusText.className = 'status';
+  info.classList.remove('active');
+  progressFill.style.width = '0%';
+
+  const formData = new FormData();
+  formData.append('video', selectedFile);
+  formData.append('filename', selectedFile.name);
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', url);
+  xhr.setRequestHeader('Accept', 'application/json');
+
+  xhr.upload.onprogress = (e) => {
+    if (e.lengthComputable) {
+      const pct = Math.round((e.loaded / e.total) * 100);
+      progressFill.style.width = pct + '%';
+    }
+  };
+
+  xhr.onload = () => {
+    progressFill.style.width = '100%';
+    if (xhr.status >= 200 && xhr.status < 300) {
+      statusText.textContent = 'Upload successful!';
+      statusText.className = 'status success';
+      try {
+        const json = JSON.parse(xhr.responseText);
+        responseText.textContent = JSON.stringify(json, null, 2);
+      } catch { responseText.textContent = xhr.responseText; }
+      info.classList.add('active');
+    } else {
+      statusText.textContent = 'Upload failed (HTTP ' + xhr.status + ')';
+      statusText.className = 'status error';
+      try {
+        const json = JSON.parse(xhr.responseText);
+        responseText.textContent = JSON.stringify(json, null, 2);
+      } catch { responseText.textContent = xhr.responseText || 'No response'; }
+      info.classList.add('active');
+    }
+    uploadBtn.disabled = false;
+  };
+
+  xhr.onerror = () => {
+    statusText.textContent = 'Network error';
+    statusText.className = 'status error';
+    uploadBtn.disabled = false;
+  };
+
+  xhr.send(formData);
+}
+</script>
+</body>
+</html>
